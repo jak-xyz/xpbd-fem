@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width">
+
+    <title>XPBD FEM</title>
+
+    <link rel="stylesheet" href="styles.css">
+
+    <meta name="description" content="Interactive demo of various FEM techniques integrated with XPBD">
+    <meta property="og:title" content="XPBD FEM">
+    <meta property="og:description" content="Interactive demo of various FEM techniques integrated with XPBD">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://jak-xyz.github.io/xpbd-fem">
+    <link rel="canonical" href="https://jak-xyz.github.io/xpbd-fem">
+
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💥</text></svg>">
+
+    <meta name="theme-color" content="#FFFFFF">
+</head>
+
+<body>
+    <div id="content">
+    </div>
+    <div id="topbar">
+        <div class="topbar-entry" style="text-align: left">
+            <button type="button" onclick="return resetBlocks();">(R)eset</button>
+            <button type="button" onclick="return toggleAllLinks();">Toggle (L)inks</button>
+        </div>
+        <div class="topbar-entry" style="text-align: center">
+            <span id="text-toggle" onclick="return toggleExplainerText();">Show explainer text</span>
+            <script>
+                function toggleExplainerText() {
+                    let toggle = document.getElementById('text-toggle');
+                    let explainer = document.getElementById('explainer-text');
+                    if (explainer.style.display != 'block') {
+                        toggle.textContent = 'Hide explainer text';
+                        explainer.style.display = 'block';
+                    } else {
+                        toggle.textContent = 'Show explainer text';
+                        explainer.style.display = 'none';
+                    }
+                }
+            </script>
+        </div>
+        <div class="topbar-entry" style="text-align: right">
+            <button type="button" onclick="return resetSettings();">Reset Settings</button>
+        </div>
+    </div>
+    <div id="explainer-text">
+        <p>
+        This web page demonstrates the finite element method (FEM) implemented with small step XPBD (<a href="http://mmacklin.com/smallsteps.pdf">paper</a>). The jumping off point for this implementation was Position-Based Simulation of Continuous Materials (<a href="http://interactive-graphics.de/index.php/research/37-position-based-simulation-of-continuous-materials">paper</a>), which suggests directly constraining non-linear hyperelastic potential energy functions. I've extended it to support more advanced element types than just triangles and tetrahedra and I've experimented with mixed method constraints, as well. You can click/drag on the elements in the viewport above to move them around, as well as tweak many aspects of the simulation with controls down below (people on smaller screens may want to zoom out a little). 
+        </p>
+        <h4>
+        Notes on the controls:
+        </h4>
+        <p>
+        You can enable a second instance of the simulation by selecting a non-null element type in the right hand column, which should make it easy to compare and contrast different settings. The column of buttons between the two sets of controls are link toggles. When the link is turned on, the corresponding right-hand control will dim and take on the value of the left hand control. Press 'L' to toggle most of the links at once. If the simulation ever becomes catastrophically unstable, 'R' will reset it.
+        </p>
+        <h4>
+        Control descriptions:
+        </h4>
+        <p>
+        <b>Element Type:</b> The shape of the individual finite elements. All shapes other than T3 are non-linear, which is an issue for many other integration methods, but is no sweat for XPBD. Q9 and H27 are higher order quadratic elements (and therefore <i>especially non-linear</i>).
+        </p>
+        <p>
+        <b>Energy Function:</b> Controls the constraint used by the finite elements. These are worth describing in detail.
+        <div style="margin-left: 1em;">
+            <p>
+            <b>Pixar:</b> A simple and effective energy function outlined in Pixar's Stable Neo-Hookean Flesh Simulation (<a href="https://graphics.pixar.com/library/StableElasticity/paper.pdf">paper</a>). Of the two versions the authors suggested, I implemented the most basic one, which doesn't handle very low Poisson's ratios but looks nice otherwise. It has a tendency to break down catastrophically under tension, especially with low step counts or low compliance. Linear triangle (T3) elements start exhibiting volumetric locking at Poisson's ratios above about 0.45, leading to limited and unnatural motion. Linear quad (Q4) elements can accommodate slightly higher Poisson's ratios, but not high enough to simulate incompressibility. Linear 3D hex elements (H8) do quite a bit better, and might be usable on their own, and quadratic elements (Q9/H27) can handle very high Poisson's ratios before you start seeing locking effects.
+            </p>
+            <p>
+            <b>Reduced:</b> Fully reduced integration. By performing numerical integration with fewer samples than necessary, we can see locking is gone! Unfortunately, so is any semblance of structural stability. This is probably not a practical mode, but I thought it was interesting for demonstration purposes.
+            </p>
+            <p>
+            <b>Sel:</b> Selectively reduced integration. Only uses reduced integration on the volume-preserving portion of the energy function. Fully integrates the Neo-Hookean 𝐼₁ - 3 (i.e. tr(𝐹ᵀ𝐹) - 3) term. On the positive side, locking is greatly reduced for all elements except T3 (whose integration is already fully reduced) and the algorithm is significantly faster, as 𝐼₁ can be factored into O(𝑛²) pre-integrated terms (where 𝑛 is the number of nodes in an element), and performing reduced integration on the volume-preserving component requires a fraction of the samples compared to full integration. On the negative side, some amount of "hourglassing" is introduced, manifesting as zig-zag artifacts.
+            </p>
+            <p>
+            <b>Mixed:</b> Mixed method. Instead of trying to solve each element with a single constraint function, breaks the solution into separate incompressible Neo-Hookean and volumetric constraints. Compared to the previous irreducible energy functions, incompressible Neo-Hookean with simple J = 1 volume constraints are quite stable, and converge to full stiffness with relatively low step counts. Internally, this option always attempts to maintain full incompressibility, though I added an offset in the Neo-Hookean constraint so that the motion will match the Pixar method for Poisson's ratios close to 0.5.
+            </p>
+            <p>
+            <b>Serial:</b> Serial mixed method. Only here for demonstration purposes, as it's worse than the previous option. The previous option solved the Neo-Hookean and volumetric constraints simultaneously per element using the matrix form of XPBD. This option uses two regular XPBD steps in sequence, one for the Neo-Hookean and one for the volumetric. For a given compliance, requires many more steps per second to converge, so it's significantly less efficient.
+            </p>
+            <p>
+            <b>Sub:</b> Optimized mixed method with separate volume constraints for each subregion of the higher order shape functions. The Q9 shape uses 4 volume constraints and the H27 element uses 8. The Neo-Hookean is calculated with the prefactored integral optimization and each volume subregion is calculated with a single quadrature point. A very good energy function for the Q4 and H8 shapes, but the O(n^3) cost of solving 9 constraints simultaneously significantly hurts the performance for H27s.
+            </p>
+            <p>
+            <b>YeohRubber:</b> Replaces the Neo-Hookean constraint of the mixed method with a Yeoh constraint tuned approximately for rubber. Less stable than Neo-Hookean and requires high step counts to resolve properly. Fairly similar response to Neo-Hookean, but it resists extreme extension a bit more.
+            </p>
+            <p>
+            <b>YeohSkin:</b> Yeoh constraint tuned approximately for skin. When given enough steps to properly resolve, displays a markedly different response than Neo-Hookean. It's very loose under low amounts of extension, and then quickly becomes very stiff as it gets stretched.
+            </p>
+        </div>
+        </p>
+        <p>
+        <b>Shape:</b> The shape of the aggregate FEM block. I spent most of my time playing with Beam L and Box L.
+        </p>
+        <b>Wonkiness:</b> Perturbs the verts to demonstrate support for non rectilinear elements. Values above 0.5 are out of spec, but you can try setting it higher to see how the sim fails.
+        <p>
+        </p>
+        <b>Time Scale:</b> Allows you to slow down the passage of time in the simulation. Useful to observe how things explode when your settings aren't quite right.
+        <p>
+        </p>
+        <b>Steps/Second:</b> Affects the fidelity of the simulation. Has linear CPU cost. Depending on the combination of energy function, compliance and how much stress the simulation is under, may need to be increased for the simulation to converge. When trying out new settings, it's a good idea to crank this value to as high as your machine can handle, and then lower it to just above the point where the sim breaks down to get best performance.
+        </p>
+        <p>
+        <b>Over Relaxation:</b> Multiplier on lambda in the internal XPBD constraint iterations. Increasing this can achieve better convergence with fewer Steps/Second, but it also decreases the stability and accuracy of the sim, and not necessarily in predictable ways. Probably dangerous for a general purpose sim, but might be useful in constrained situations.
+        </p>
+        <p>
+        <b>Volume Passes:</b> Controls how many additional volume-only constraint solves are run after the regular energy function constraints. Only useful when going for incompressibility, but in certain cases might allow significantly turning down the Steps/Second, saving CPU time. Especially useful for Q4 and H8 elements, as their volume constraints are relatively cheap. Seems to work decently with the Mixed energy functions, but doesn't really help Pixar and seems to break Yeoh.
+        </p>
+        <p>
+        <b>Gravity:</b> Gravitational constant in meters per second. The sim is quite "zoomed in," which is why the default gravity is so low.
+        </p>
+        <p>
+        <b>Compliance:</b> Inverse of stiffness. Thanks to XPBD, it's independent of timestep, and I normalized it against element size, as well. Should be within a constant multiple of physical compliance, but I haven't yet sought out a source of ground truth to calibrated it.
+        </p>
+        <p>
+        <b>Rayleigh Damp:</b> Rayleigh Damping as described in the original <a href="https://matthias-research.github.io/pages/publications/XPBD.pdf">XPBD paper</a>. A bit tricky to tune, as it depends on compliance and has a narrow range where it looks good. Also, while the damping calculations themselves are very cheap, even moderately high damping requires very high Steps/Second, which can be a performance issue.
+        </p>
+        <p>
+        <b>PBD Damp:</b> The non-rigid body mode damping described in the venerable <a href="https://matthias-research.github.io/pages/publications/posBasedDyn.pdf">Position Based Dynamics paper</a>. Similar to Rayleigh damping, though a bit more aggressive. Useful because it does not depend on compliance or step count, though, on the other hand, it's cost is not de minimis.
+        </p>
+        <p>
+        <b>𝑣 *= (1-x) Drag:</b> Damps all motion non-physically. Basically what it says on the tin, though corrected to be independent of timestep.
+        </p>
+        <p>
+        <b>Poisson's Ratio:</b> As discussed in the energy function section, controls how volume preserving the sim is. All of the energy functions are geared towards high Poisson's ratios, and the non-Pixar ones want it very close to 0.5, indeed. (Though setting Poisson's ratio to exactly 0.5 will cause a divide by zero, and all energy functions will explode.)
+        </p>
+        <p>
+        <b>Orientation:</b> Which way you want the block to hang.
+        </p>
+        <p>
+        <b>Lock:</b> Left and Right lock the corresponding side of the block in place. Rotate will rotate the right side of the block around the block's midpoint, which can be useful when examining volumetric locking.
+        </p>
+        <p>
+        <b>Left-Right Separation:</b> When both the Left and Right locks are selected, allows you to test stretching and compression.
+        </p>
+        <p id="text-toggle" style="margin: 0px auto; text-align: center; font-size: 1rem;" onclick="return toggleExplainerText();">Hide explainer text</p>
+    </div>
+    <div id="controls">
+        <script>
+            document.addEventListener('DOMContentLoaded', function(event) {
+                let parentElement = document.getElementById('controls');
+
+                // function addBlock(type, width, height, xScale, yScale) {
+                //     rpc('AddBlock', type, width, height, xScale, yScale);
+                // }
+                resetBlocks();
+
+                addRadioButtons(parentElement, 'Element Type:', Settings_ElementTypeBit, Settings_ElementTypeMask,
+                    [['∅', 'T3', 'Q4', 'Q9'], ['H8', 'H27']]);
+                addRadioButtons(parentElement, 'Energy Function:', Settings_EnergyBit, Settings_EnergyMask,
+                    [['Pixar', '<span style="color:#910">Reduced</span>', 'Sel'], ['Mixed', 'Serial', 'Sub'], ['YeohRubber', 'YeohSkin']]);
+                addRadioButtons(parentElement, 'Shape:', Settings_ShapeBit, Settings_ShapeMask,
+                    [['Single', 'Line'], ['Beam L', 'M', 'H'], ['2x1', '1x2', '4x1', '8x1'], ['Box L', 'M', 'H']]);
+                addRangeWithTextField(parentElement, 'Wonkiness:', 'wonkiness', 0, 100, 0,
+                    (value) => (value / 100));
+
+                addRangeWithTextField(parentElement, 'Time Scale:', 'timeScale', 0, 100, 0,
+                    (value) => (value / 100));
+                addRangeWithTextField(parentElement, 'Steps/Second:', 'stepsPerSecond', 0, 100, 0,
+                    (value) => (200.0 * 10 ** (2.0 * value / 100)));
+                addRangeWithTextField(parentElement, 'Over Relaxation:', 'overRelaxation', 0, 100, 0,
+                    (value) => (1.0 + 0.5 * value / 100));
+                addRangeWithTextField(parentElement, 'Volume Passes:', 'volumePasses', 0, 20, 1,
+                    (value) => (value));
+                addRangeWithTextField(parentElement, 'Gravity:', 'gravity', 0, 100, 0,
+                    (value) => (10.0 * (value / 100) ** 2));
+                addRangeWithTextField(parentElement, 'Compliance:', 'compliance', 0, 100, 0,
+                    (value) => (0.01 / 1000.0 * 10 ** (6.0 * value / 100.0)));
+                addRangeWithTextField(parentElement, 'Rayleigh Damp:', 'damping', 0, 100, 0,
+                    (value) => (10 ** (6.0 * value / 100.0 - 3.0) - 0.001));
+                addRangeWithTextField(parentElement, 'PBD Damp:', 'pbdDamping', 0, 100, 0,
+                    (value) => ((4 ** (value / 100.0) - 1.0) / 3.0));
+                addRangeWithTextField(parentElement, '𝑣 *= (1-x) Drag:', 'drag', 0, 100, 0,
+                    (value) => (1.0 / 1000.0 * (10 ** (3.0 * value / 100.0) - 1.0)));
+                addRangeWithTextField(parentElement, 'Poisson\'s Ratio:', 'poissonsRatio', 0, 100, 0,
+                    (value) => (0.5 * (value / 100.0)));
+
+                addCheckbox(parentElement, 'Orientation:', [Settings_Rotate90Degrees], ['90°']);
+                addCheckbox(parentElement, 'Lock:',
+                    [Settings_LockLeft, Settings_LockRight, Settings_RotateLock],
+                    ['Left' , 'Right', 'Rotate']);
+                addRangeWithTextField(parentElement, 'Left-Right Separation:', 'leftRightSeparation', 0, 1000, 0,
+                    (value) => (2.0 * (value / 1000.0)));
+                updateSettings();
+            });
+        </script>
+    </div>
+    <script src="main.js"></script>
+    <script src="ui.js"></script>
+</body>
+</html>
