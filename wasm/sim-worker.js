@@ -3,7 +3,7 @@
 //-----------------------------------------------------------------------------
 // Wasm module loading and init
 //-----------------------------------------------------------------------------
-const INITIAL_TOTAL_MEMORY = 50331648; // Must be the same value as the linker command line
+const INITIAL_TOTAL_MEMORY = 69206016; // Must be the same value as the linker command line
 const WASM_PAGE_SIZE = 65536;
 const PAGES = INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE;
 var memory = new WebAssembly.Memory({ 'initial': PAGES, 'maximum': PAGES });

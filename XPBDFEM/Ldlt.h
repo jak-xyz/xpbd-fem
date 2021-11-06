@@ -18,10 +18,14 @@
 // LDLTDecomposition(N, A, L, r, invD);
 // float X[N];
 // LDLTSolve(N, L, r, invD, b, X);
+// 
+// Alternatively, if you're just doing a one-shot solve, you can use:
+// LDLTDecomposeAndSolve(N, A, b, X);
 //-----------------------------------------------------------------------------
 #pragma once
 
 //-----------------------------------------------------------------------------
+#include <assert.h>
 #include <inttypes.h>
 
 namespace LDLTPrivate {
@@ -79,4 +83,13 @@ inline void LDLTSolve(uint32_t n, float* L, uint32_t* r_dummy, float* invD, floa
 			x[n - 1 - i] -= L[r[n - 1 - j] + n - 1 - i] * x[n - 1 - j];
 		}
 	}
+}
+
+inline void LDLTDecomposeAndSolve(uint32_t n, float* ASym, float* b, float* outX) {
+	assert(n <= 25);
+	float L[25 * 25];
+	uint32_t r[25];
+	float invD[25];
+	LDLTDecomposition(n, ASym, L, r, invD);
+	LDLTSolve(n, L, r, invD, b, outX);
 }

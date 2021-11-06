@@ -51,7 +51,7 @@
     </div>
     <div id="explainer-text">
         <p>
-        This web page demonstrates the finite element method (FEM) implemented with small step XPBD (<a href="http://mmacklin.com/smallsteps.pdf">paper</a>). The jumping off point for this implementation was Position-Based Simulation of Continuous Materials (<a href="http://interactive-graphics.de/index.php/research/37-position-based-simulation-of-continuous-materials">paper</a>), which suggests directly constraining non-linear hyperelastic potential energy functions. I've extended it to support more advanced element types than just triangles and tetrahedra and I've experimented with mixed method constraints, as well. You can click/drag on the elements in the viewport above to move them around, as well as tweak many aspects of the simulation with controls down below (people on smaller screens may want to zoom out a little). 
+        This web page demonstrates the finite element method (FEM) implemented with small step XPBD (<a href="http://mmacklin.com/smallsteps.pdf">paper</a>). The jumping off point for this implementation was Position-Based Simulation of Continuous Materials (<a href="http://interactive-graphics.de/index.php/research/37-position-based-simulation-of-continuous-materials">paper</a>), which suggests directly constraining non-linear hyperelastic potential energy functions. I've extended it to support more advanced element types than just triangles and tetrahedra and I've experimented with mixed method constraints, as well. Recently, A Constraint-based Formulation of Stable Neo-Hookean Materials (<a href="https://mmacklin.com/neohookean.pdf">paper</a>) was published, which shows how to more precisely implement energy constraints with XPBD, and I have incorporated those suggestions. You can click/drag on the elements in the viewport above to move them around, as well as tweak many aspects of the simulation with controls down below (people on smaller screens may want to zoom out a little). 
         </p>
         <h4>
         Notes on the controls:
@@ -63,80 +63,119 @@
         Control descriptions:
         </h4>
         <p>
-        <b>Element Type:</b> The shape of the individual finite elements. All shapes other than T3 are non-linear, which is an issue for many other integration methods, but is no sweat for XPBD. Q9 and H27 are higher order quadratic elements (and therefore <i>especially non-linear</i>).
+        <b>Element Type:</b> The type of the individual finite elements. All shapes other than T3 and T4 are non-linear, which is an issue for many other integration methods, but is no sweat for XPBD. T6, T10, Q9 and H27 are higher order quadratic elements (and therefore <i>especially non-linear</i>).
+        </p>
+        <p>
+        Unbalanced configurations of the tetrahedral elements (T4 and T10) experience significant non-physical ghost forces. This is especially obvious if you set the Shape to "Line", the Tri/Tet Pattern to "Uniform" and set all forms of drag and damping to 0. Switching the Tri/Tet Pattern to "Mirrored" and then choosing a balanced Shape like "Beam M" should eliminate most of the chaotic movement.
         </p>
         <p>
         <b>Energy Function:</b> Controls the constraint used by the finite elements. These are worth describing in detail.
         <div style="margin-left: 1em;">
             <p>
-            <b>Pixar:</b> A simple and effective energy function outlined in Pixar's Stable Neo-Hookean Flesh Simulation (<a href="https://graphics.pixar.com/library/StableElasticity/paper.pdf">paper</a>). Of the two versions the authors suggested, I implemented the most basic one, which doesn't handle very low Poisson's ratios but looks nice otherwise. It has a tendency to break down catastrophically under tension, especially with low step counts or low compliance. Linear triangle (T3) elements start exhibiting volumetric locking at Poisson's ratios above about 0.45, leading to limited and unnatural motion. Linear quad (Q4) elements can accommodate slightly higher Poisson's ratios, but not high enough to simulate incompressibility. Linear 3D hex elements (H8) do quite a bit better, and might be usable on their own, and quadratic elements (Q9/H27) can handle very high Poisson's ratios before you start seeing locking effects.
+            <b>Pixar:</b> A simple energy function outlined in Pixar's Stable Neo-Hookean Flesh Simulation (<a href="https://graphics.pixar.com/library/StableElasticity/paper.pdf">paper</a>). It has a tendency to break down catastrophically under tension, especially with low step counts, low compliance or high Poisson's ratios. First order elements (T3/Q4/T4/H8) all exhibit minor "locking" where movement is artificially restricted for numerical reasons. At nearly incompressible Poisson's ratios (>0.49), the locking becomes quite severe. Quadratic elements (T6/T10/Q9/H27) do better, but even they lock somewhat at very high Poisson's ratios.
             </p>
             <p>
-            <b>Reduced:</b> Fully reduced integration. By performing numerical integration with fewer samples than necessary, we can see locking is gone! Unfortunately, so is any semblance of structural stability. This is probably not a practical mode, but I thought it was interesting for demonstration purposes.
+            <b>Reduced:</b> Fully reduced integration. By performing numerical integration with fewer samples than necessary, we can see locking is gone! Unfortunately, so is any semblance of structural stability. This is probably not a practical mode, but I thought it was interesting for demonstration purposes. (This is only enabled for the quad and hex elements.)
             </p>
             <p>
-            <b>Sel:</b> Selectively reduced integration. Only uses reduced integration on the volume-preserving portion of the energy function. Fully integrates the Neo-Hookean 𝐼₁ - 3 (i.e. tr(𝐹ᵀ𝐹) - 3) term. On the positive side, locking is greatly reduced for all elements except T3 (whose integration is already fully reduced) and the algorithm is significantly faster, as 𝐼₁ can be factored into O(𝑛²) pre-integrated terms (where 𝑛 is the number of nodes in an element), and performing reduced integration on the volume-preserving component requires a fraction of the samples compared to full integration. On the negative side, some amount of "hourglassing" is introduced, manifesting as zig-zag artifacts.
+            <b>PSel:</b> Selectively reduced integration. Only uses reduced integration on the volume-preserving portion of the energy function. Fully integrates the Neo-Hookean 𝐼₁ (i.e. tr(𝐹ᵀ𝐹)) term. On the positive side, this eliminates the locking in quad/hex elements and the algorithm is significantly faster, as 𝐼₁ can be factored into O(𝑛²) pre-integrated terms (where 𝑛 is the number of nodes in an element), and performing reduced integration on the volume-preserving component requires a fraction of the samples compared to full integration. On the negative side, some amount of "hourglassing" is introduced, manifesting as zig-zag artifacts.
             </p>
             <p>
-            <b>Mixed:</b> Mixed method. Instead of trying to solve each element with a single constraint function, breaks the solution into separate incompressible Neo-Hookean and volumetric constraints. Compared to the previous irreducible energy functions, incompressible Neo-Hookean with simple J = 1 volume constraints are quite stable, and converge to full stiffness with relatively low step counts. Internally, this option always attempts to maintain full incompressibility, though I added an offset in the Neo-Hookean constraint so that the motion will match the Pixar method for Poisson's ratios close to 0.5.
+            <b>Mixed:</b> Mixed method Neo-Hookean. Instead of trying to solve each element with a single constraint function, breaks the solution into separate deviatoric and volumetric constraints. Compared to the previous irreducible energy functions, this is more stable, and converge to full stiffness with relatively low step counts. This is especially true at very high Poisson's ratios, where the Pixar energy functions required many Steps/Second to converge.
             </p>
             <p>
-            <b>Serial:</b> Serial mixed method. Only here for demonstration purposes, as it's worse than the previous option. The previous option solved the Neo-Hookean and volumetric constraints simultaneously per element using the matrix form of XPBD. This option uses two regular XPBD steps in sequence, one for the Neo-Hookean and one for the volumetric. For a given compliance, requires many more steps per second to converge, so it's significantly less efficient.
+            <b>MSel:</b> As PSel is for Pixar, MSel is for Mixed. Performs full integration on the deviatoric constraint while using reduced integration on the volume constraint. Improves performance and reduces locking, while introducing some hourglassing.
             </p>
             <p>
-            <b>Sub:</b> Optimized mixed method with separate volume constraints for each subregion of the higher order shape functions. The Q9 shape uses 4 volume constraints and the H27 element uses 8. The Neo-Hookean is calculated with the prefactored integral optimization and each volume subregion is calculated with a single quadrature point. A very good energy function for the Q4 and H8 shapes, but the O(n^3) cost of solving 9 constraints simultaneously significantly hurts the performance for H27s.
+            <b>Yeoh:</b> Replaces the Neo-Hookean constraint of Mixed with a Yeoh constraint tuned approximately for skin. Less stable than Neo-Hookean and requires higher step counts to resolve properly, but displays a markedly different behavior compared to Neo-Hookean. It's very loose under low amounts of extension, and then quickly becomes very stiff as it gets stretched. Unlike the previous energy functions, Yeoh is only designed for the nearly-incompressible range, so Poisson's Ratio needs to be set to 0.4999 or higher.
             </p>
             <p>
-            <b>YeohRubber:</b> Replaces the Neo-Hookean constraint of the mixed method with a Yeoh constraint tuned approximately for rubber. Less stable than Neo-Hookean and requires high step counts to resolve properly. Fairly similar response to Neo-Hookean, but it resists extreme extension a bit more.
+            <b>YSel:</b> As MSel is for Mixed, YSel is for Yeoh. Using reduced integration on the volumetric constraint significantly reduces locking. Locking isn't eliminated, though, as the Yeoh deviatoric constraint introduces some locking of its own.
             </p>
             <p>
-            <b>YeohSkin:</b> Yeoh constraint tuned approximately for skin. When given enough steps to properly resolve, displays a markedly different response than Neo-Hookean. It's very loose under low amounts of extension, and then quickly becomes very stiff as it gets stretched.
+            <b>YFast:</b> An approximation of YSel. While regular Yeoh calculates and transforms a Neo-Hookean term per-quadrature point, this version calculates a Neo-Hookean term for the whole element and then applies the Yeoh transformation to that. As a result, the per-constraint speed is nearly as fast as regular Neo-Hookean, and yet it still behaves very similarly to full Yeoh. In fact, it converges at lower Steps/Second, though hourglassing even more apparent.
+            </p>
+            <p>
+            <b>VPix:</b> A version of the Pixar energy function, but instead of constraining per-element, constrains per-vertex by summing the energy integrals of all surrounding elements. For the linear tri and tet elements (T3/T4), only integrates the hyperelastic invariants, and then calculates the energy using the summed invariants. This greatly reduces locking, though does not eliminate it completely. Per constraint, this method is significantly more expensive than constraining per-element, though it generally requires fewer Steps/Second to converge.
+            </p>
+            <p>
+            <b>VMix:</b> A version of the Mixed Subregion constraint implemented per-vertex. This is too slow for higher order elements, but for T3/T4, it might be the best choice.
+            </p>
+            <p>
+            <b>VSkin:</b> YSel implemented per vertex.
+            </p>
+            <p>
+            <b>CubeNeo:</b> An approximate version of mixed Neo-Hookean that only works on square Q4 and cube H8 elements. Relies on the fact that the gradient of 𝐼₁ for a square/cube is well approximated by the vectors pointing from the centroid to each node (you can see this by examining the terms of the pre-integrated factoring of 𝐼₁). This version of the constraint is the simplest to code up and runs significantly faster than the full version, the big downside being it only works on perfect squares and cubes. Setting Rayleigh Damp to 0 and Poisson's Ratio to 0.5 switches to an even more approximate and performant code path where node masses are assumed to be identical per-element.
+            </p>
+            <p>
+            <b>CubeSkin:</b> Same as CubeNeo, but with the additional YFast hack applied.
             </p>
         </div>
         </p>
         <p>
-        <b>Shape:</b> The shape of the aggregate FEM block. I spent most of my time playing with Beam L and Box L.
+        <b>Mixed XPBD:</b> Choose between Serial and Simultaneous solvers for the Mixed, MSel, Yeoh, YSel and YFast Energy Functions. Simultaneous means the deviatoric and volumetric constraints are solved simultaneously with the matrix form of XPBD, though the individual elements are still solved serially in a Gauss-Seidel fashion. The Simultaneous solver seems to be able to hold its shape better at low Steps/Second and also accommodates higher levels of Rayleigh damping.
         </p>
-        <b>Wonkiness:</b> Perturbs the verts to demonstrate support for non rectilinear elements. Values above 0.5 are out of spec, but you can try setting it higher to see how the sim fails.
         <p>
+        <b>Shape:</b> The shape of the aggregate FEM block. I've done most of my testing using Beam L, Box L and Armadillo. Armadillo loads the Stanford Armadillo mesh or something like it. I was unable to get an automatic mesher to work for hex meshes, so for H8/H27 you get my hand made Armadillo-Bear.
         </p>
-        <b>Time Scale:</b> Allows you to slow down the passage of time in the simulation. Useful to observe how things explode when your settings aren't quite right.
         <p>
-        </p>
         <b>Steps/Second:</b> Affects the fidelity of the simulation. Has linear CPU cost. Depending on the combination of energy function, compliance and how much stress the simulation is under, may need to be increased for the simulation to converge. When trying out new settings, it's a good idea to crank this value to as high as your machine can handle, and then lower it to just above the point where the sim breaks down to get best performance.
-        </p>
-        <p>
-        <b>Over Relaxation:</b> Multiplier on lambda in the internal XPBD constraint iterations. Increasing this can achieve better convergence with fewer Steps/Second, but it also decreases the stability and accuracy of the sim, and not necessarily in predictable ways. Probably dangerous for a general purpose sim, but might be useful in constrained situations.
-        </p>
-        <p>
-        <b>Volume Passes:</b> Controls how many additional volume-only constraint solves are run after the regular energy function constraints. Only useful when going for incompressibility, but in certain cases might allow significantly turning down the Steps/Second, saving CPU time. Especially useful for Q4 and H8 elements, as their volume constraints are relatively cheap. Seems to work decently with the Mixed energy functions, but doesn't really help Pixar and seems to break Yeoh.
         </p>
         <p>
         <b>Gravity:</b> Gravitational constant in meters per second. The sim is quite "zoomed in," which is why the default gravity is so low.
         </p>
         <p>
-        <b>Compliance:</b> Inverse of stiffness. Thanks to XPBD, it's independent of timestep, and I normalized it against element size, as well. Should be within a constant multiple of physical compliance, but I haven't yet sought out a source of ground truth to calibrated it.
+        <b>Compliance:</b> Inverse of stiffness. Thanks to XPBD, it's independent of timestep.
         </p>
         <p>
-        <b>Rayleigh Damp:</b> Rayleigh Damping as described in the original <a href="https://matthias-research.github.io/pages/publications/XPBD.pdf">XPBD paper</a>. A bit tricky to tune, as it depends on compliance and has a narrow range where it looks good. Also, while the damping calculations themselves are very cheap, even moderately high damping requires very high Steps/Second, which can be a performance issue.
+        <b>Rayleigh Type:</b> The implementation of Rayleigh damping to use.
+        <div style="margin-left: 1em;">
+            <p>
+            <b>Orig:</b> Rayleigh damping as described in the original <a href="https://matthias-research.github.io/pages/publications/XPBD.pdf">XPBD paper</a>. While this looks quite nice at low damping levels and strains, it interferes with volume conservation, even at very high Steps/Second.
+            </p>
+            <p>
+            <b>Lim:</b> Breaks damping out into its own constraint and then limits how large it can get relative to the main constraint function. This reduces the maximum strength of damping, but also greatly reduces the artifacts. Both constraints are still applied at the same time, so the cost is barely increased compared to the original.
+            </p>
+            <p>
+            <b>Vel:</b> Applies damping directly to velocity as a post process after all position constraints are calculated. This allows maximum damping and completely removes artifacts. Unfortunately is very expensive, as it's essentially doubling the number of constraints that are run each step.
+            </p>
+            <p>
+            <b>Amor:</b> Similar to Vel, but amortizes the calculations over 8 steps. This reduces the maximum possible damping, but otherwise appears to generate very similar behavior (though I'd hesitate to recommend this as a generally viable solution, as this kind of thing feels like it has the potential to introduce weird resonances).
+            </p>
+        </div>
         </p>
         <p>
-        <b>PBD Damp:</b> The non-rigid body mode damping described in the venerable <a href="https://matthias-research.github.io/pages/publications/posBasedDyn.pdf">Position Based Dynamics paper</a>. Similar to Rayleigh damping, though a bit more aggressive. Useful because it does not depend on compliance or step count, though, on the other hand, it's cost is not de minimis.
+        <b>Rayleigh Damp:</b> The strength of Rayleigh damping. In the terms used by the XPBD paper, this is the gamma value, not the beta value, as gamma can be well defined even when Poisson's ratio is 0.5.
         </p>
         <p>
-        <b>𝑣 *= (1-x) Drag:</b> Damps all motion non-physically. Basically what it says on the tin, though corrected to be independent of timestep.
+        <b>PBD Damp:</b> The non-rigid body mode damping described in the venerable <a href="https://matthias-research.github.io/pages/publications/posBasedDyn.pdf">Position Based Dynamics paper</a>. Similar to Rayleigh damping, though a bit more aggressive. Also becomes amortized when the Amor Rayleigh Type is selected.
         </p>
         <p>
-        <b>Poisson's Ratio:</b> As discussed in the energy function section, controls how volume preserving the sim is. All of the energy functions are geared towards high Poisson's ratios, and the non-Pixar ones want it very close to 0.5, indeed. (Though setting Poisson's ratio to exactly 0.5 will cause a divide by zero, and all energy functions will explode.)
+        <b>𝑣 *= (1-x) Drag:</b> Damps all motion, including rigid body motion. Basically what it says on the tin, though corrected to be independent of timestep.
         </p>
         <p>
-        <b>Orientation:</b> Which way you want the block to hang.
+        <b>Poisson's Ratio:</b> As discussed in the energy function section, controls how volume preserving the sim is. All of the energy functions are geared towards high Poisson's ratios. The Yeoh energy functions require this value to be >0.4999, whereas the Pixar ones become numerically stiff above 0.49.
+        </p>
+        <p>
+        <b>Positioning:</b> Rot 90° causes the block to hang downward, which can be useful for testing damping. Centered forces the block to stay centered, which is useful for doing very detailed comparisons between two settings.
         </p>
         <p>
         <b>Lock:</b> Left and Right lock the corresponding side of the block in place. Rotate will rotate the right side of the block around the block's midpoint, which can be useful when examining volumetric locking.
         </p>
         <p>
         <b>Left-Right Separation:</b> When both the Left and Right locks are selected, allows you to test stretching and compression.
+        </p>
+        <p>
+        <b>Time Scale:</b> Allows you to slow down the passage of time in the simulation. Useful to observe how things explode when your settings aren't quite right.
+        </p>
+        <p>
+        <b>Volume Passes:</b> Controls how many additional volume-only constraint solves are run after the regular energy function constraints. Only useful when going for incompressibility, but in certain cases might allow significantly turning down the Steps/Second, saving CPU time. Currently not implemented for vertex constraints.
+        </p>
+        <p>
+        <b>Wonkiness:</b> Perturbs the verts to demonstrate support for non rectilinear elements. Values above 0.5 are out of spec, but you can try setting it higher to see how the sim fails.
+        </p>
+        <p>
+        <b>Tri/Tet Pattern:</b> The pattern of the orientations of tri and tet elements. "Uniform" most closely resembles the distribution you'd get in a generated mesh, and also unfortunately has serious locking problems for first order elements. "Mirrored" is mainly thrown in out of interest, as it significantly reduces locking, though it has subtle artifacts of its own.
         </p>
         <p id="text-toggle" style="margin: 0px auto; text-align: center; font-size: 1rem;" onclick="return toggleExplainerText();">Hide explainer text</p>
     </div>
@@ -151,26 +190,22 @@
                 resetBlocks();
 
                 addRadioButtons(parentElement, 'Element Type:', Settings_ElementTypeBit, Settings_ElementTypeMask,
-                    [['∅', 'T3', 'Q4', 'Q9'], ['H8', 'H27']]);
+                    [['∅', 'T3', 'T6', 'Q4', 'Q9'], ['T4', 'T10', 'H8', 'H27']]);
                 addRadioButtons(parentElement, 'Energy Function:', Settings_EnergyBit, Settings_EnergyMask,
-                    [['Pixar', '<span style="color:#910">Reduced</span>', 'Sel'], ['Mixed', 'Serial', 'Sub'], ['YeohRubber', 'YeohSkin']]);
+                    [['Pixar', '<span style="color:#910">Reduced</span>', 'PSel'], ['Mixed', 'MSel'], ['Yeoh', 'YSel', 'YFast'], ['VPix', 'VMix', 'VSkin'], ['CubeNeo', 'CubeSkin']]);
+                addRadioButtons(parentElement, 'Mixed XPBD:', Settings_XpbdSolveBit, Settings_XpbdSolveMask,
+                    [['Serial', 'Simultaneous']]);
                 addRadioButtons(parentElement, 'Shape:', Settings_ShapeBit, Settings_ShapeMask,
-                    [['Single', 'Line'], ['Beam L', 'M', 'H'], ['2x1', '1x2', '4x1', '8x1'], ['Box L', 'M', 'H']]);
-                addRangeWithTextField(parentElement, 'Wonkiness:', 'wonkiness', 0, 100, 0,
-                    (value) => (value / 100));
+                    [['Single', 'Line'], ['Beam L', 'M', 'H'], ['2x1', '1x2', '4x1', '8x1'], ['Box L', 'M', 'H'], ['Armadillo']]);
 
-                addRangeWithTextField(parentElement, 'Time Scale:', 'timeScale', 0, 100, 0,
-                    (value) => (value / 100));
                 addRangeWithTextField(parentElement, 'Steps/Second:', 'stepsPerSecond', 0, 100, 0,
                     (value) => (200.0 * 10 ** (2.0 * value / 100)));
-                addRangeWithTextField(parentElement, 'Over Relaxation:', 'overRelaxation', 0, 100, 0,
-                    (value) => (1.0 + 0.5 * value / 100));
-                addRangeWithTextField(parentElement, 'Volume Passes:', 'volumePasses', 0, 20, 1,
-                    (value) => (value));
                 addRangeWithTextField(parentElement, 'Gravity:', 'gravity', 0, 100, 0,
                     (value) => (10.0 * (value / 100) ** 2));
                 addRangeWithTextField(parentElement, 'Compliance:', 'compliance', 0, 100, 0,
                     (value) => (0.01 / 1000.0 * 10 ** (6.0 * value / 100.0)));
+                addRadioButtons(parentElement, 'Rayleigh Type:', Settings_RayleighTypeBit, Settings_RayleighTypeMask,
+                    [['Orig', 'Lim', 'Vel', 'Amor']]);
                 addRangeWithTextField(parentElement, 'Rayleigh Damp:', 'damping', 0, 100, 0,
                     (value) => (10 ** (6.0 * value / 100.0 - 3.0) - 0.001));
                 addRangeWithTextField(parentElement, 'PBD Damp:', 'pbdDamping', 0, 100, 0,
@@ -180,12 +215,26 @@
                 addRangeWithTextField(parentElement, 'Poisson\'s Ratio:', 'poissonsRatio', 0, 100, 0,
                     (value) => (0.5 * (value / 100.0)));
 
-                addCheckbox(parentElement, 'Orientation:', [Settings_Rotate90Degrees], ['90°']);
+                addCheckbox(parentElement, 'Positioning:', [Settings_Rotate90Degrees, Settings_Centered], ['Rot 90°', 'Centered']);
                 addCheckbox(parentElement, 'Lock:',
                     [Settings_LockLeft, Settings_LockRight, Settings_RotateLock],
                     ['Left' , 'Right', 'Rotate']);
                 addRangeWithTextField(parentElement, 'Left-Right Separation:', 'leftRightSeparation', 0, 1000, 0,
                     (value) => (2.0 * (value / 1000.0)));
+
+                parentElement.appendChild(document.createElement('br'));
+                parentElement.appendChild(document.createElement('br'));
+                parentElement.appendChild(document.createElement('br'));
+
+                addRangeWithTextField(parentElement, 'Time Scale:', 'timeScale', 0, 100, 0,
+                    (value) => (value / 100));
+                addRangeWithTextField(parentElement, 'Volume Passes:', 'volumePasses', 0, 20, 1,
+                    (value) => (value));
+                addRangeWithTextField(parentElement, 'Wonkiness:', 'wonkiness', 0, 100, 0,
+                    (value) => (value / 100));
+                addRadioButtons(parentElement, 'Tri/Tet Pattern:', Settings_ElementPatternBit, Settings_ElementPatternMask,
+                    [['Uniform', 'Mirrored']]);
+
                 updateSettings();
             });
         </script>

@@ -20,7 +20,7 @@ struct Sim {
 	void Update(float dt, float medianFrameTime, Manipulator* manip);
 	void Render();
 
-	void AddBlock(uint32_t type, uint32_t width, uint32_t height, float xScale, float yScale);
+	void AddBlock(uint32_t type, const float* nodeData, uint32_t nodeDataCount, const uint32_t* idxData, uint32_t idxDataCount, bool autoResize = false);
 	void FinishAddingBlocks();
 	void Reset();
 
@@ -29,7 +29,7 @@ struct Sim {
 	Settings settings;
 
 	Allocator alloc;
-	uint8_t allocMem[20 * 1024 * 1024];
+	uint8_t allocMem[29 * 1024 * 1024];
 
 	static const uint32_t kMaxGeos = 32;
 	Geo* geos[kMaxGeos];
@@ -39,6 +39,7 @@ struct Sim {
 
 	float dtResidual = 0.0f;
 	uint32_t tickId = 0;
+	float leftRightSeparationOld = 1.0;
 	float rightRotationTheta = 0.0;
 
 	double updateTimeAccum = 0.0;

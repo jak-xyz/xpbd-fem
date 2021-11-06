@@ -106,12 +106,17 @@ int main() {
 
 	//
 	demo.Reset();
-	//demo.AddBlock(Element_T3, 25, 7, 1.0f, 1.0f);
-	//demo.AddBlock(Element_Q4, 25, 7, 1.0f, 1.0f);
+	//demo.AddBlock(Element_T3, 1, 1, 1.0f, 1.0f);
+	//demo.AddBlock(Element_T6, 5, 5, 1.0f, 1.0f);
+	demo.AddBlock(Element_Q4, 1, 1, 1.0f, 1.0f);
 	//demo.AddBlock(Element_Q5, 25, 7, 1.0f, 1.0f);
 	//demo.AddBlock(Element_Q9, 25, 7, 1.0f, 1.0f);
-	demo.AddBlock(Element_H8, 3, 3, 1.0f, 1.0f);
+	//demo.AddBlock(Element_T4, 25, 25, 1.0f, 1.0f);
+	//demo.AddBlock(Element_T10, 1, 1, 1.0f, 1.0f);
+	//demo.AddBlock(Element_H8, 1, 1, 1.0f / (0.7f * (20.0f / 100.0f) / (float)(31)), 1.0f / (0.7f * (20.0f / 100.0f) / (float)(31)));
 	//demo.AddBlock(Element_H27, 3, 3, 1.0f, 1.0f);
+	//demo.AddBlock(Element_T3C, 3, 3, 1.0f, 1.0f);
+	//demo.AddBlock(Element_T4C, 2, 2, 1.0f, 1.0f);
 	demo.FinishAddingBlocks();
 
 	//-------------------------------------------------------------------------

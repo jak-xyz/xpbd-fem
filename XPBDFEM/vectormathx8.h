@@ -193,7 +193,7 @@ public:
 	vec2x8 cols[2];
 
 	inline mat2x8() {}
-	inline mat2x8(const vec2x8& c0, const vec2x8& c1) { cols[0] = c0; cols[1] = c1; }
+	inline explicit mat2x8(const vec2x8& c0, const vec2x8& c1) { cols[0] = c0; cols[1] = c1; }
 
 	inline vec2x8& operator [] (size_t i) { return cols[i]; }
 	inline vec2x8 operator [] (size_t i) const { return cols[i]; }
@@ -214,7 +214,7 @@ public:
 	vec3x8 cols[3];
 
 	inline mat3x8() {}
-	inline mat3x8(const vec3x8& c0, const vec3x8& c1, const vec3x8& c2) { cols[0] = c0; cols[1] = c1; cols[2] = c2; }
+	inline explicit mat3x8(const vec3x8& c0, const vec3x8& c1, const vec3x8& c2) { cols[0] = c0; cols[1] = c1; cols[2] = c2; }
 
 	inline vec3x8& operator [] (size_t i) { return cols[i]; }
 	inline vec3x8 operator [] (size_t i) const { return cols[i]; }
@@ -237,7 +237,7 @@ public:
 	vec4x8 cols[4];
 
 	inline mat4x8() {}
-	inline mat4x8(const vec4x8& c0, const vec4x8& c1, const vec4x8& c2, const vec4x8& c3) { cols[0] = c0; cols[1] = c1; cols[2] = c2; cols[3] = c3; }
+	inline explicit mat4x8(const vec4x8& c0, const vec4x8& c1, const vec4x8& c2, const vec4x8& c3) { cols[0] = c0; cols[1] = c1; cols[2] = c2; cols[3] = c3; }
 
 	inline vec4x8& operator [] (size_t i) { return cols[i]; }
 	inline vec4x8 operator [] (size_t i) const { return cols[i]; }
@@ -400,7 +400,7 @@ inline vec2x8 VECTORCALL min(vec2x8 x, vec2x8 y) { return vec_map(min, x, y); }
 inline vec2x8 VECTORCALL mix(vec2x8 x, vec2x8 y, vec2x8 a) { return x * (vec2x8(floatx8(1.0f)) - a) + y * a; }
 inline vec2x8 VECTORCALL mix(vec2x8 x, vec2x8 y, floatx8 a) { return x * (floatx8(1.0f) - a) + y * a; }
 inline vec2x8 VECTORCALL normalize(vec2x8 x) { return x * (1.0f / length(x)); }
-inline vec2x8 VECTORCALL safeNormalize(vec2x8 x) { floatx8 len = max(floatx8(0.0000001f), length(x)); return x * (floatx8(1.0f) / len); }
+inline vec2x8 VECTORCALL safeNormalize(vec2x8 x) { floatx8 len = max(floatx8(1.0e-11f), length(x)); return x * (floatx8(1.0f) / len); }
 inline vec2x8 VECTORCALL round(vec2x8 x) { return vec_map(round, x); }
 inline vec2x8 VECTORCALL smoothstep(vec2x8 edge0, vec2x8 edge1, vec2x8 x) { return vec_map(smoothstep, edge0, edge1, x); }
 inline vec2x8 VECTORCALL sqrt(vec2x8 x) { return vec_map(sqrt, x); }

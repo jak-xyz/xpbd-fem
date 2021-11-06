@@ -14,7 +14,7 @@ extern "C" __attribute__((visibility ("default"))) void OnFocus();
 extern "C" __attribute__((visibility ("default"))) void AddBlock(uint32_t type, uint32_t width, uint32_t height, float xScale, float yScale);
 extern "C" __attribute__((visibility ("default"))) void FinishAddingBlocks();
 extern "C" __attribute__((visibility ("default"))) void ResetDemo();
-extern "C" __attribute__((visibility ("default"))) void UpdateSettings(uint32_t simIdx, float timeScale, float substepsPerSecond, float overRelaxation, uint32_t volumePasses, float gravity, float compliance, float damping, float pbdDamping, float drag, float poissonsRatio, float wonkiness, float leftRightSeparation, uint32_t flags);
+extern "C" __attribute__((visibility ("default"))) void UpdateSettings(uint32_t simIdx, float timeScale, float substepsPerSecond, uint32_t volumePasses, float gravity, float compliance, float damping, float pbdDamping, float drag, float poissonsRatio, float wonkiness, float leftRightSeparation, uint32_t flags);
 
 struct State {
 	double timestampOld = 0.0;
@@ -40,9 +40,7 @@ void Init() {
 
 void Update(double timestamp, double medianFrameTime) {
 	float dt = 0.001f * (float)(timestamp - state->timestampOld);
-	double preUpdate = performance_now();
 	state->demo.Update(dt, 0.001f * (float)medianFrameTime);
-	double postUpdate = performance_now();
 	state->demo.Render();
 	state->viewFromWorld = state->demo.camera.GetViewFromWorld();
 	state->projFromView = state->demo.camera.GetProjFromView();
@@ -79,11 +77,10 @@ void ResetDemo() {
 	state->demo.Reset();
 }
 
-void UpdateSettings(uint32_t simIdx, float timeScale, float substepsPerSecond, float overRelaxation, uint32_t volumePasses, float gravity, float compliance, float damping, float pbdDamping, float drag, float poissonsRatio, float wonkiness, float leftRightSeparation, uint32_t flags) {
+void UpdateSettings(uint32_t simIdx, float timeScale, float substepsPerSecond, uint32_t volumePasses, float gravity, float compliance, float damping, float pbdDamping, float drag, float poissonsRatio, float wonkiness, float leftRightSeparation, uint32_t flags) {
 	state->demo.UpdateSettings(simIdx, Settings {
 		timeScale,
 		substepsPerSecond,
-		overRelaxation,
 		volumePasses,
 		gravity * vec2(0.0f, -9.81f),
 		compliance,

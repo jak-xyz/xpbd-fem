@@ -32,11 +32,12 @@ $(OBJ) : Makefile # Similarly for when the makefile changes
 $(OBJ) : %.o : %.cpp
 	clang-12 \
 		--target=wasm32 -c -x c++ -std=c++17 -nostdlib -nostdinc -O3 \
+		-ffast-math \
 		-fno-math-errno -fno-rtti -fno-exceptions -fno-vectorize -fno-slp-vectorize \
 		-o $@ $<
 
 sim.wasm : $(OBJ)
 	wasm-ld-12 \
-		--no-entry --export-dynamic --import-memory --initial-memory=50331648 -z stack-size=1048576 \
+		--no-entry --export-dynamic --import-memory --initial-memory=69206016 -z stack-size=1048576 \
 		--allow-undefined --export=__heap_base \
 		-o $@ $^

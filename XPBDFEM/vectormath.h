@@ -180,8 +180,8 @@ public:
 	vec2 cols[2];
 
 	inline mat2() {}
-	inline mat2(float s) { cols[0] = vec2(s, 0.0f); cols[1] = vec2(0.0f, s); }
-	inline mat2(const vec2& c0, const vec2& c1) { cols[0] = c0; cols[1] = c1; }
+	inline explicit mat2(float s) { cols[0] = vec2(s, 0.0f); cols[1] = vec2(0.0f, s); }
+	inline explicit mat2(const vec2& c0, const vec2& c1) { cols[0] = c0; cols[1] = c1; }
 
 	inline vec2& operator [] (size_t i) { return cols[i]; }
 	inline vec2 operator [] (size_t i) const { return cols[i]; }
@@ -192,8 +192,8 @@ public:
 	vec3 cols[3];
 
 	inline mat3() {}
-	inline mat3(float s) { cols[0] = vec3(s, 0.0f, 0.0f); cols[1] = vec3(0.0f, s, 0.0f); cols[2] = vec3(0.0f, 0.0f, s); }
-	inline mat3(const vec3& c0, const vec3& c1, const vec3& c2) { cols[0] = c0; cols[1] = c1; cols[2] = c2; }
+	inline explicit mat3(float s) { cols[0] = vec3(s, 0.0f, 0.0f); cols[1] = vec3(0.0f, s, 0.0f); cols[2] = vec3(0.0f, 0.0f, s); }
+	inline explicit mat3(const vec3& c0, const vec3& c1, const vec3& c2) { cols[0] = c0; cols[1] = c1; cols[2] = c2; }
 
 	inline vec3& operator [] (size_t i) { return cols[i]; }
 	inline vec3 operator [] (size_t i) const { return cols[i]; }
@@ -204,8 +204,8 @@ public:
 	vec4 cols[4];
 
 	inline mat4() {}
-	inline mat4(float s) { cols[0] = vec4(s, 0.0f, 0.0f, 0.0f); cols[1] = vec4(0.0f, s, 0.0f, 0.0f); cols[2] = vec4(0.0f, 0.0f, s, 0.0f); cols[3] = vec4(0.0f, 0.0f, 0.0f, s); }
-	inline mat4(const vec4& c0, const vec4& c1, const vec4& c2, const vec4& c3) { cols[0] = c0; cols[1] = c1; cols[2] = c2; cols[3] = c3; }
+	inline explicit mat4(float s) { cols[0] = vec4(s, 0.0f, 0.0f, 0.0f); cols[1] = vec4(0.0f, s, 0.0f, 0.0f); cols[2] = vec4(0.0f, 0.0f, s, 0.0f); cols[3] = vec4(0.0f, 0.0f, 0.0f, s); }
+	inline explicit mat4(const vec4& c0, const vec4& c1, const vec4& c2, const vec4& c3) { cols[0] = c0; cols[1] = c1; cols[2] = c2; cols[3] = c3; }
 
 	inline vec4& operator [] (size_t i) { return cols[i]; }
 	inline vec4 operator [] (size_t i) const { return cols[i]; }
@@ -244,7 +244,7 @@ inline VEC_FORCEINLINE float mix(float x, float y, float a) { return x * (1.0f -
 inline VEC_FORCEINLINE float mod(float x, float y) { return x - y * floor(x / y); }
 inline VEC_FORCEINLINE float modf(float x, float& i) { return modff(x, &i); }
 inline VEC_FORCEINLINE float normalize(float x) { return x * (1.0f / length(x)); }
-inline VEC_FORCEINLINE float safeNormalize(float x) { float len = max(0.0000001f, length(x)); return x * (1.0f / len); }
+inline VEC_FORCEINLINE float safeNormalize(float x) { float len = max(1.0e-11f, length(x)); return x * (1.0f / len); }
 inline VEC_FORCEINLINE float radians(float degrees) { return 3.14159265358979323846f * degrees / 180.0f; }
 inline VEC_FORCEINLINE float sign(float x) { return (x > 0.0f) ? 1.0f : ((x < 0.0f) ? -1.0f : 0.0f); }
 inline VEC_FORCEINLINE float smoothstep(float edge0, float edge1, float x) { float t = clamp((x - edge0) / (edge1 - edge0), 0.0f, 1.0f); return t * t * (3.0f - 2.0f * t); }
@@ -308,7 +308,7 @@ inline vec2 mod(vec2 x, vec2 y) { return vec_map(mod, x, y); }
 inline vec2 mod(vec2 x, float y) { return mod(x, vec2(y)); }
 inline vec2 modf(vec2 x, vec2& i) { return vec2(modf(x[0], &i[0]), modf(x[1], &i[1])); }
 inline vec2 normalize(vec2 x) { return x * (1.0f / length(x)); }
-inline vec2 safeNormalize(vec2 x) { float len = max(0.0000001f, length(x)); return x * (1.0f / len); }
+inline vec2 safeNormalize(vec2 x) { float len = max(1.0e-11f, length(x)); return x * (1.0f / len); }
 inline vec2 pow(vec2 x, vec2 y) { return vec_map(pow, x, y); }
 inline vec2 radians(vec2 degrees) { return vec_map(radians, degrees); }
 inline vec2 round(vec2 x) { return vec_map(round, x); }
@@ -382,7 +382,7 @@ inline vec3 mod(vec3 x, vec3 y) { return vec_map(mod, x, y); }
 inline vec3 mod(vec3 x, float y) { return mod(x, vec3(y)); }
 inline vec3 modf(vec3 x, vec3& i) { return vec3(modf(x[0], &i[0]), modf(x[1], &i[1]), modf(x[2], &i[2])); }
 inline vec3 normalize(vec3 x) { return x * (1.0f / length(x)); }
-inline vec3 safeNormalize(vec3 x) { float len = max(0.0000001f, length(x)); return x * (1.0f / len); }
+inline vec3 safeNormalize(vec3 x) { float len = max(1.0e-11f, length(x)); return x * (1.0f / len); }
 inline vec3 pow(vec3 x, vec3 y) { return vec_map(pow, x, y); }
 inline vec3 radians(vec3 degrees) { return vec_map(radians, degrees); }
 inline vec3 round(vec3 x) { return vec_map(round, x); }
@@ -455,7 +455,7 @@ inline vec4 mod(vec4 x, vec4 y) { return vec_map(mod, x, y); }
 inline vec4 mod(vec4 x, float y) { return mod(x, vec4(y)); }
 inline vec4 modf(vec4 x, vec4& i) { return vec4(modf(x[0], &i[0]), modf(x[1], &i[1]), modf(x[2], &i[2]), modf(x[3], &i[3])); }
 inline vec4 normalize(vec4 x) { return x * (1.0f / length(x)); }
-inline vec4 safeNormalize(vec4 x) { float len = max(0.0000001f, length(x)); return x * (1.0f / len); }
+inline vec4 safeNormalize(vec4 x) { float len = max(1.0e-11f, length(x)); return x * (1.0f / len); }
 inline vec4 pow(vec4 x, vec4 y) { return vec_map(pow, x, y); }
 inline vec4 radians(vec4 degrees) { return vec_map(radians, degrees); }
 inline vec4 round(vec4 x) { return vec_map(round, x); }
@@ -573,7 +573,7 @@ public:
 	inline explicit dvec2(double x_, double y_) { data[0] = x_; data[1] = y_; }
 	inline explicit dvec2(const vec2& v) { data[0] = (double)v.x; data[1] = (double)v.y; }
 
-	inline explicit operator vec2() { return vec2((float)data[0], (float)data[1]); }
+	inline explicit operator vec2() const { return vec2((float)data[0], (float)data[1]); }
 
 	inline dvec2& operator = (const dvec2& other) { x = other.x; y = other.y; return *this; }
 	inline double& operator [] (size_t i) { return data[i]; }
@@ -619,7 +619,7 @@ public:
 	inline explicit dvec3(double x_, double y_, double z_) { data[0] = x_; data[1] = y_; data[2] = z_; }
 	inline explicit dvec3(const vec3& v) { data[0] = (double)v.x; data[1] = (double)v.y; data[2] = (double)v.z; }
 
-	inline explicit operator vec3() { return vec3((float)data[0], (float)data[1], (float)data[2]); }
+	inline explicit operator vec3() const { return vec3((float)data[0], (float)data[1], (float)data[2]); }
 
 	inline dvec3& operator = (const dvec3& other) { x = other.x; y = other.y; z = other.z; return *this; }
 	inline double& operator [] (size_t i) { return data[i]; }

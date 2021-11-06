@@ -213,13 +213,9 @@
     <ClCompile Include="Geo.cpp" />
     <ClCompile Include="glad\src\glad.c" />
     <ClCompile Include="GlRenderer.cpp" />
-    <ClCompile Include="H8.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="H27.cpp" />
-    <ClCompile Include="Q4.cpp" />
-    <ClCompile Include="Q9.cpp" />
-    <ClCompile Include="T3.cpp" />
-    <ClCompile Include="ThreadPool.cpp" />
+    <ClCompile Include="Connectivity.cpp" />
+    <ClCompile Include="MeshGen.cpp" />
     <ClCompile Include="vectormath.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -232,17 +228,13 @@
     <ClInclude Include="Fem.h" />
     <ClInclude Include="Geo.h" />
     <ClInclude Include="GlRenderer.h" />
-    <ClInclude Include="H8.h" />
+    <ClInclude Include="Connectivity.h" />
+    <ClInclude Include="MeshGen.h" />
     <ClInclude Include="Xpbd.h" />
     <ClInclude Include="Input.h" />
     <ClInclude Include="Ldlt.h" />
     <ClInclude Include="Manipulator.h" />
-    <ClInclude Include="H27.h" />
-    <ClInclude Include="Q4.h" />
-    <ClInclude Include="Q9.h" />
     <ClInclude Include="Settings.h" />
-    <ClInclude Include="T3.h" />
-    <ClInclude Include="ThreadPool.h" />
     <ClInclude Include="vectormath.h" />
     <ClInclude Include="vectormathx8.h" />
   </ItemGroup>
